@@ -1,0 +1,96 @@
+---
+title: "Cookie injection"
+description: Run tests with your real browser sessions — no manual login
+---
+
+Expect reads cookie databases from your installed browsers and injects them into the test session automatically. Your tests run authenticated without test accounts, hardcoded credentials, or manual login steps.
+
+## Why it matters
+
+Most bugs in authenticated flows only appear when you are logged in. Cookie injection lets you test the real experience — with your actual session data — the moment you run `expect-cli`.
+
+## Supported browsers
+
+Expect extracts cookies from:
+
+`chrome` `edge` `brave` `arc` `dia` `helium` `chromium` `vivaldi` `opera` `ghost` `sidekick` `yandex` `iridium` `thorium` `sigmaos` `wavebox` `comet` `blisk` `firefox` `safari`
+
+## How extraction works
+
+Expect reads cookie databases directly from disk — no browser launch required. The process runs in parallel across all detected browsers.
+
+<Tabs>
+  <Tab title="macOS">
+    **Chromium browsers** (Chrome, Brave, Arc, Edge, etc.)
+
+    Expect reads the encrypted SQLite cookie database and decrypts values using a key from Keychain. macOS may display a Keychain access prompt. Allow access to proceed.
+
+    Decryption uses PBKDF2-SHA1 (1003 iterations, salt `"saltysalt"`) followed by AES-128-CBC.
+
+    **Firefox**
+
+    Cookies are stored in plaintext in `cookies.sqlite`. No Keychain prompt.
+
+    **Safari**
+
+    Reads the binary `Cookies.binarycookies` file directly from disk. No prompt.
+  </Tab>
+  <Tab title="Linux">
+    **Chromium browsers**
+
+    Expect retrieves the decryption key using `secret-tool`. If `secret-tool` is unavailable or returns no key, it falls back to `"peanuts"` as the password. Multiple key candidates are tried.
+
+    Decryption uses PBKDF2-SHA1 (1 iteration) followed by AES-128-CBC.
+
+    **Firefox**
+
+    Cookies are stored in plaintext in `cookies.sqlite`. No key retrieval needed.
+  </Tab>
+  <Tab title="Windows">
+    **Chromium browsers**
+
+    Expect reads the encrypted key from the browser's `Local State` file and unwraps it using DPAPI via PowerShell. The decrypted key is then used for AES-256-GCM decryption.
+
+    Databases with metadata version 24 or later include a 32-byte hash prefix that is stripped after decryption.
+
+    **Firefox**
+
+    Cookies are stored in plaintext in `cookies.sqlite`. No DPAPI call needed.
+  </Tab>
+</Tabs>
+
+## Skipping cookie extraction
+
+To run tests without any cookies — for example in CI or when testing unauthenticated flows — pass `--no-cookies`:
+
+```bash
+expect-cli --no-cookies -m "test the public homepage" -y
+```
+
+The `--ci` flag also disables cookie extraction automatically.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cookies are not being injected">
+    Run with `--no-cookies` to confirm whether the issue is cookie-related. Then use `--headed` to open a visible browser and log in manually for that session:
+
+    ```bash
+    expect-cli --headed -m "test the dashboard" -y
+    ```
+
+    If the test passes with manual login, check that the browser you are logged in with is in the supported list and that the cookie database path exists on your machine.
+  </Accordion>
+
+  <Accordion title="macOS Keychain prompt appears repeatedly">
+    Grant permanent access when prompted. In Keychain Access, find the entry for your browser's safe storage key and set access to **Allow** for `expect-cli`.
+  </Accordion>
+
+  <Accordion title="Linux: no cookies extracted from Chromium">
+    Verify `secret-tool` is installed (`apt install libsecret-tools`). If it is not available, Expect falls back to `"peanuts"` as the decryption password, which works for some profiles.
+  </Accordion>
+</AccordionGroup>
+
+## Privacy
+
+Cookies never leave your machine. They are read from disk, injected into the local browser session, and discarded when the run ends. No cookie data is sent to any external service.

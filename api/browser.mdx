@@ -1,0 +1,296 @@
+---
+title: "@expect/browser"
+description: "Launch Playwright pages with cookie injection, accessibility snapshots, and ref-based interaction"
+---
+
+`@expect/browser` wraps Playwright with three core primitives: a page factory that injects your real browser cookies, an accessibility snapshot function that assigns stable refs to every interactive element, and an `act` helper that clicks a ref and returns a fresh snapshot.
+
+## Install
+
+<CodeGroup>
+
+```bash npm
+npm install @expect/browser
+```
+
+```bash pnpm
+pnpm add @expect/browser
+```
+
+```bash yarn
+yarn add @expect/browser
+```
+
+```bash bun
+bun add @expect/browser
+```
+
+</CodeGroup>
+
+---
+
+## `createPage(url, options?)`
+
+Launches a Chromium browser, opens a new page, navigates to `url`, and optionally injects cookies from your local browser profiles. Returns the browser, context, and page objects.
+
+```typescript
+import { createPage } from "@expect/browser";
+
+const { browser, context, page } = await createPage("https://github.com", {
+  headed: true,
+  executablePath: "/usr/bin/chromium",
+  cookies: true,
+  waitUntil: "networkidle",
+});
+
+// ... interact with page ...
+await browser.close();
+```
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  The URL to navigate to after launching the browser.
+</ParamField>
+
+<ParamField path="options" type="CreatePageOptions">
+  <Expandable title="properties">
+    <ParamField path="headed" type="boolean" default="false">
+      Run the browser in headed (visible) mode. Useful for local debugging.
+    </ParamField>
+
+    <ParamField path="executablePath" type="string">
+      Path to a custom Chromium-compatible browser binary. When omitted, Playwright's bundled Chromium is used.
+    </ParamField>
+
+    <ParamField path="cookies" type="boolean | Cookie[]" default="true">
+      Controls cookie injection. `true` auto-extracts cookies from your default browser profile. Pass a `Cookie[]` to inject a specific set. `false` disables injection.
+    </ParamField>
+
+    <ParamField path="waitUntil" type="'load' | 'domcontentloaded' | 'networkidle' | 'commit'" default="load">
+      When to consider navigation complete. Passed directly to Playwright's `page.goto`.
+    </ParamField>
+
+    <ParamField path="videoOutputDir" type="string">
+      Directory to write a video recording of the session. When provided, Playwright records the browser viewport to a video file in this directory.
+    </ParamField>
+
+    <ParamField path="cdpUrl" type="string">
+      Connect to an existing Chromium instance via its CDP endpoint URL instead of launching a new browser. When set, `executablePath` and `headed` are ignored.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="browser" type="Browser">
+  The Playwright `Browser` instance. Call `browser.close()` when done.
+</ResponseField>
+
+<ResponseField name="context" type="BrowserContext">
+  The Playwright `BrowserContext` with cookies pre-injected.
+</ResponseField>
+
+<ResponseField name="page" type="Page">
+  The Playwright `Page` navigated to `url`.
+</ResponseField>
+
+---
+
+## `snapshot(page, options?)`
+
+Captures an accessibility tree from the page. Each interactive element is assigned a stable ref (`e1`, `e2`, …) that you can pass to `act`. Non-interactive content elements with names are also assigned refs unless `interactive: true` is set.
+
+```typescript
+import { snapshot } from "@expect/browser";
+
+const { tree, refs, locator } = await snapshot(page, {
+  timeout: 30000,
+  interactive: true,
+  compact: true,
+  maxDepth: 5,
+});
+
+console.log(tree);
+// - button "Sign in" [ref=e1]
+// - link "Pricing" [ref=e2]
+// - textbox "Search" [ref=e3]
+
+const signInLocator = await locator("e1"); // Playwright Locator for the ref
+```
+
+### Parameters
+
+<ParamField path="page" type="Page" required>
+  The Playwright `Page` to snapshot.
+</ParamField>
+
+<ParamField path="options" type="SnapshotOptions">
+  <Expandable title="properties">
+    <ParamField path="timeout" type="number">
+      Maximum time in milliseconds to wait for the accessibility tree. Defaults to the package constant.
+    </ParamField>
+
+    <ParamField path="interactive" type="boolean">
+      When `true`, only include interactive elements (buttons, inputs, links, etc.) in the tree and refs.
+    </ParamField>
+
+    <ParamField path="compact" type="boolean">
+      When `true`, collapse structural-only nodes that add depth without semantic value.
+    </ParamField>
+
+    <ParamField path="maxDepth" type="number">
+      Limit the tree to this many levels of nesting. Deeper nodes are omitted.
+    </ParamField>
+
+    <ParamField path="selector" type="string">
+      CSS selector to restrict snapshot scope. When provided, only elements matching this selector and their descendants are included.
+    </ParamField>
+
+    <ParamField path="cursor" type="boolean">
+      When `true`, include cursor-interactive elements detected by the runtime (elements that react to pointer events but are not in the standard ARIA tree).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="tree" type="string">
+  A human-readable accessibility tree where every referenceable element is annotated with its ref:
+
+  ```
+  - button "Sign in" [ref=e1]
+  - link "Pricing" [ref=e2]
+  - textbox "Search" [ref=e3]
+  ```
+</ResponseField>
+
+<ResponseField name="refs" type="RefMap">
+  A map from ref string (`"e1"`, `"e2"`, …) to `RefEntry` objects describing each element's role and name.
+</ResponseField>
+
+<ResponseField name="stats" type="SnapshotStats">
+  Metadata about the snapshot: line count, character count, estimated token count, and ref counts.
+</ResponseField>
+
+<ResponseField name="locator" type="(ref: string) => Effect.Effect<Locator, RefNotFoundError>">
+  A function that resolves a ref string to a Playwright `Locator`. Returns an Effect that fails with `RefNotFoundError` if the ref does not exist in `refs`.
+</ResponseField>
+
+---
+
+## `act(page, ref, action, options?)`
+
+Performs an action on the element identified by `ref` and returns a fresh snapshot of the updated page.
+
+```typescript
+import { act } from "@expect/browser";
+
+const result = await act(page, "e1", async (locator) => {
+  await locator.click();
+});
+
+console.log(result.tree); // updated accessibility tree after click
+```
+
+### Parameters
+
+<ParamField path="page" type="Page" required>
+  The Playwright `Page` to act on.
+</ParamField>
+
+<ParamField path="ref" type="string" required>
+  The ref string (e.g. `"e1"`) identifying the element to act on. Refs come from a prior `snapshot` call.
+</ParamField>
+
+<ParamField path="action" type="(locator: Locator) => Promise<void>" required>
+  An async function that receives the resolved Playwright `Locator` and performs the interaction — click, fill, select, etc.
+</ParamField>
+
+<ParamField path="options" type="SnapshotOptions">
+  Options forwarded to the post-action `snapshot` call.
+</ParamField>
+
+### Returns
+
+A fresh `SnapshotResult` taken after the action completes.
+
+---
+
+## `injectCookies(context, cookies)`
+
+Injects a `Cookie[]` into a Playwright `BrowserContext`. Use this when you have pre-extracted cookies and want to add them to an existing context rather than relying on the automatic injection in `createPage`.
+
+```typescript
+import { injectCookies } from "@expect/browser";
+
+await injectCookies(context, cookies);
+```
+
+### Parameters
+
+<ParamField path="context" type="BrowserContext" required>
+  The Playwright `BrowserContext` to inject cookies into.
+</ParamField>
+
+<ParamField path="cookies" type="Cookie[]" required>
+  The cookies to inject. Use `toPlaywrightCookies` from `@expect/cookies` to convert if needed, or pass the `Cookie[]` directly.
+</ParamField>
+
+---
+
+## Types
+
+```typescript
+interface CreatePageOptions {
+  headed?: boolean;
+  executablePath?: string;
+  cookies?: boolean | Cookie[];
+  waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
+  videoOutputDir?: string;
+  cdpUrl?: string;
+}
+
+interface CreatePageResult {
+  browser: Browser;
+  context: BrowserContext;
+  page: Page;
+}
+
+interface SnapshotOptions {
+  timeout?: number;
+  interactive?: boolean;
+  compact?: boolean;
+  maxDepth?: number;
+  selector?: string;
+  cursor?: boolean;
+}
+
+interface SnapshotResult {
+  tree: string;
+  refs: RefMap;
+  stats: SnapshotStats;
+  locator: (ref: string) => Effect.Effect<Locator, RefNotFoundError>;
+}
+
+interface RefEntry {
+  role: string;
+  name: string;
+  nth?: number;
+  selector?: string;
+}
+
+interface RefMap {
+  [ref: string]: RefEntry;
+}
+```
+
+---
+
+## Re-exports
+
+`@expect/browser` re-exports the following cookie utilities from `@expect/cookies` for convenience so you do not need to install both packages:
+
+`extractCookies` `extractProfileCookies` `extractAllProfileCookies` `detectBrowserProfiles` `matchCookies` `matchCookieHeader` `toCookieHeader` `toPlaywrightCookies` `toPuppeteerCookies`
+
+See the [`@expect/cookies`](/api/cookies) reference for full API documentation.

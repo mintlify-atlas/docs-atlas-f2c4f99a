@@ -1,0 +1,205 @@
+---
+title: "Commands"
+description: "All expect-cli commands and subcommands"
+---
+
+The CLI is available as `expect-cli`, `expect`, `expect-agent`, or `testie` — all four are aliases for the same binary.
+
+## expect-cli
+
+The root command. Without any flags it opens the interactive TUI. With flags it runs headlessly.
+
+```bash
+expect-cli [options]
+```
+
+<Tip>
+Expect automatically runs headlessly when it detects a CI environment, a coding agent, or a non-TTY stdin. You do not need to pass `--ci` explicitly in most cases.
+</Tip>
+
+**Examples**
+
+```bash
+# Open the interactive TUI
+expect-cli
+
+# Run immediately with a custom instruction
+expect-cli -m "test the login flow" -y
+
+# Run with a visible browser window
+expect-cli --headed -m "smoke test" -y
+
+# Test all changes on the current branch
+expect-cli --target branch
+
+# Test unstaged changes only
+expect-cli --target unstaged
+
+# Skip system browser cookie extraction
+expect-cli --no-cookies -m "test" -y
+```
+
+See [Options](/cli/options) for the full list of flags.
+
+---
+
+## Subcommands
+
+<AccordionGroup>
+  <Accordion title="expect-cli init">
+    Set up Expect for your coding agent. This command:
+
+    1. Installs `expect-cli` globally using your detected package manager
+    2. Installs the Expect skill for your coding agent
+    3. Optionally generates a GitHub Actions workflow for CI testing
+
+    ```bash
+    expect-cli init [options]
+    ```
+
+    **Options**
+
+    | Flag | Description |
+    |------|-------------|
+    | `-y, --yes` | Skip all confirmation prompts and use defaults |
+
+    **Examples**
+
+    ```bash
+    # Interactive setup
+    expect-cli init
+
+    # Non-interactive setup (use all defaults)
+    expect-cli init --yes
+    ```
+
+    <Note>
+    `expect-cli init` requires one of the supported coding agents to be installed: Claude Code, Codex, or Cursor. If none are found, the command exits with an error.
+    </Note>
+  </Accordion>
+
+  <Accordion title="expect-cli add github-action">
+    Generate a GitHub Actions workflow file at `.github/workflows/expect.yml`. The workflow runs Expect on every pull request targeting `main`.
+
+    ```bash
+    expect-cli add github-action [options]
+    ```
+
+    **Options**
+
+    | Flag | Description |
+    |------|-------------|
+    | `-y, --yes` | Use defaults without prompting |
+
+    When run interactively, the command prompts you for:
+    - **Dev server command** — the command to start your app (e.g. `pnpm dev`)
+    - **Dev server URL** — the URL your app listens on (default: `http://localhost:3000`)
+
+    **Example**
+
+    ```bash
+    expect-cli add github-action
+    ```
+
+    The generated workflow file looks like this:
+
+    ```yaml .github/workflows/expect.yml
+    name: Expect Tests
+
+    on:
+      pull_request:
+        branches: [main]
+
+    jobs:
+      expect:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXPECT_BASE_URL: "http://localhost:3000"
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with:
+              node-version: 22
+              cache: npm
+          - name: Install dependencies
+            run: npm ci
+          - name: Start dev server
+            run: npm run dev &
+          - name: Wait for dev server
+            run: npx wait-on http://localhost:3000 --timeout 60000
+          - name: Run expect
+            run: npx expect-cli@latest --ci
+    ```
+
+    After generating the file, add `ANTHROPIC_API_KEY` to your repository secrets under **Settings → Secrets and variables → Actions → New repository secret**.
+
+    See [CI with GitHub Actions](/guides/ci-github-actions) for a full walkthrough.
+  </Accordion>
+
+  <Accordion title="expect-cli add skill">
+    Install the Expect skill for your coding agent. The skill teaches your agent how to invoke Expect and interpret results.
+
+    ```bash
+    expect-cli add skill [options]
+    ```
+
+    **Options**
+
+    | Flag | Description |
+    |------|-------------|
+    | `-y, --yes` | Skip confirmation prompt |
+
+    **Examples**
+
+    <CodeGroup>
+
+    ```bash npm
+    npx -y skills add https://github.com/millionco/expect --skill expect -y
+    ```
+
+    ```bash pnpm
+    pnpm dlx skills add https://github.com/millionco/expect --skill expect -y
+    ```
+
+    ```bash bun
+    bunx skills add https://github.com/millionco/expect --skill expect -y
+    ```
+
+    </CodeGroup>
+
+    You can also run `expect-cli add skill` directly and it detects your package manager automatically.
+
+    See [Agent skill](/guides/agent-skill) for more details.
+  </Accordion>
+
+  <Accordion title="expect-cli audit">
+    Audit your workspace for lint, type, and formatting issues. Expect scans `package.json` scripts across all packages in the monorepo and runs any script whose name contains `lint`, `check`, `format`, `typecheck`, or `type-check`.
+
+    ```bash
+    expect-cli audit
+    ```
+
+    **No options.** The command takes no flags.
+
+    In a terminal it renders an interactive TUI with live progress. When running inside a coding agent or CI it falls back to plain text output.
+
+    **Exit code** is `1` if any script fails, `0` if all pass.
+
+    **Example output**
+
+    ```
+    expect audit
+
+    ✔ apps/cli
+      ✔ lint
+      ✔ typecheck
+    ✖ packages/shared
+      ✖ lint
+        Error: 3 problems found
+
+    2 passed, 1 failed
+    ```
+  </Accordion>
+</AccordionGroup>

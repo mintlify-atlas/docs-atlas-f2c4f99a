@@ -1,0 +1,167 @@
+---
+title: "Options"
+description: "All flags and options for the expect-cli command"
+---
+
+All options apply to the root `expect-cli` command. Subcommands (`init`, `add github-action`, `add skill`) have their own limited flag sets documented on the [Commands](/cli/commands) page.
+
+## Flags
+
+<ParamField path="-m, --message" type="string">
+  Natural language instruction describing what to test. When provided, Expect skips the instruction input screen and uses this text directly.
+
+  ```bash
+  expect-cli -m "test the checkout flow end to end"
+  ```
+</ParamField>
+
+<ParamField path="-f, --flow" type="string">
+  Reuse a saved flow by its slug. Flows are stored in the `.expect` directory after you run a test. Pass the slug to replay the same test plan without re-entering the instruction.
+
+  ```bash
+  expect-cli -f checkout-flow
+  ```
+</ParamField>
+
+<ParamField path="-y, --yes" type="boolean">
+  Run immediately without asking for confirmation. Useful when invoking Expect from a script or coding agent.
+
+  ```bash
+  expect-cli -m "smoke test the homepage" -y
+  ```
+</ParamField>
+
+<ParamField path="-a, --agent" type="string">
+  Agent provider to use for generating and executing the test plan. Accepted values: `claude`, `codex`.
+
+  Defaults to `claude` when not specified.
+
+  ```bash
+  expect-cli -a codex -m "test the login page" -y
+  ```
+</ParamField>
+
+<ParamField path="-t, --target" type="string" default="changes">
+  Defines which code changes to test. Accepted values:
+
+  | Value | What it tests |
+  |-------|---------------|
+  | `changes` | Staged and unstaged changes compared to the main branch (default) |
+  | `branch` | All commits on the current branch compared to the main branch |
+  | `unstaged` | Only unstaged changes in the working tree |
+
+  ```bash
+  expect-cli --target branch
+  expect-cli --target unstaged
+  ```
+</ParamField>
+
+<ParamField path="--verbose" type="boolean">
+  Enable verbose logging. Prints detailed output from the agent and browser automation to stdout.
+
+  ```bash
+  expect-cli --verbose -m "test the dashboard" -y
+  ```
+</ParamField>
+
+<ParamField path="--headed" type="boolean">
+  Show a visible browser window during the test run. Useful for debugging test failures locally.
+
+  ```bash
+  expect-cli --headed -m "debug the payment form" -y
+  ```
+
+  <Note>`--headed` is ignored in CI mode. The browser always runs headlessly when `--ci` is active or when Expect detects a CI or agent environment.</Note>
+</ParamField>
+
+<ParamField path="--no-cookies" type="boolean">
+  Skip extracting cookies from your system browser. By default Expect reads your browser profile so tests run with your real authentication state. Pass `--no-cookies` to start with a clean session instead.
+
+  ```bash
+  expect-cli --no-cookies -m "test the logged-out homepage" -y
+  ```
+
+  See [Cookie auth](/guides/cookie-auth) for more details.
+</ParamField>
+
+<ParamField path="--ci" type="boolean">
+  Force CI mode. Equivalent to enabling all of the following at once:
+  - Headless browser (no visible window)
+  - No cookie extraction
+  - Auto-yes (no confirmation prompts)
+  - 30-minute execution timeout
+
+  ```bash
+  expect-cli --ci
+  ```
+
+  <Tip>You rarely need to pass `--ci` manually. Expect enables CI mode automatically when it detects a CI environment variable (`CI`), a coding agent environment (`CLAUDECODE`, `CURSOR_AGENT`, `CODEX_CI`, etc.), or a non-TTY stdin.</Tip>
+</ParamField>
+
+<ParamField path="--timeout" type="number">
+  Execution timeout in milliseconds. Expect exits with a non-zero code if the test run exceeds this duration.
+
+  Defaults to no timeout in interactive mode. In CI mode the default is 30 minutes (1,800,000 ms).
+
+  ```bash
+  expect-cli --timeout 60000 -m "quick smoke test" -y
+  ```
+</ParamField>
+
+<ParamField path="--replay-host" type="string" default="https://expect.dev">
+  The base URL for the live session replay viewer. Change this if you are self-hosting the replay viewer.
+
+  ```bash
+  expect-cli --replay-host https://replay.example.com -m "test" -y
+  ```
+</ParamField>
+
+<ParamField path="-v, --version" type="boolean">
+  Print the installed version and exit.
+
+  ```bash
+  expect-cli -v
+  ```
+</ParamField>
+
+<ParamField path="-h, --help" type="boolean">
+  Display the help text and exit.
+
+  ```bash
+  expect-cli --help
+  ```
+</ParamField>
+
+---
+
+## Common combinations
+
+**Run immediately with a visible browser**
+
+```bash
+expect-cli --headed -m "test the signup flow" -y
+```
+
+**Run in CI mode with a custom timeout**
+
+```bash
+expect-cli --ci --timeout 900000
+```
+
+**Test only branch changes using Codex**
+
+```bash
+expect-cli -a codex --target branch -m "verify all new API endpoints" -y
+```
+
+**Test without cookies and with verbose output**
+
+```bash
+expect-cli --no-cookies --verbose -m "test unauthenticated flows" -y
+```
+
+**Replay a saved flow immediately**
+
+```bash
+expect-cli -f checkout-flow -y
+```

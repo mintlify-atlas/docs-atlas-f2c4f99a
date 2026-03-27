@@ -1,0 +1,101 @@
+---
+title: "Agent skill"
+description: Let Claude Code, Codex, and Cursor run browser tests automatically
+---
+
+The Expect agent skill is a prompt file installed into your coding agent that instructs it to run `expect-cli` after any browser-facing change — instead of reaching for raw browser tools like Playwright MCP or Chrome DevTools.
+
+## What the skill does
+
+When installed, the skill tells your agent to:
+
+- Run `expect-cli -m "..." -y` after modifying components, pages, forms, routes, API calls, or styles
+- Write adversarial instructions that try to break the feature, not just confirm it renders
+- Prefer `expect-cli` over raw browser tools for all change verification
+- Check the session replay URL after each run to confirm what the browser actually did
+
+The skill is adversarial by design. It instructs the agent to test like a user trying to break things — submitting empty forms, using invalid data, double-clicking buttons, navigating back mid-flow — not like a QA checklist confirming the UI renders.
+
+## Supported agents
+
+- **Claude Code**
+- **Codex CLI**
+- **Cursor**
+
+## Installing the skill
+
+**During init (recommended)**
+
+When you run `expect-cli init`, you are prompted to install the skill as part of setup:
+
+```bash
+expect-cli init
+```
+
+**After init**
+
+Install the skill separately at any time:
+
+```bash
+expect-cli add skill
+```
+
+This runs the appropriate install command for your package manager:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npx -y skills add https://github.com/millionco/expect --skill expect -y
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm dlx skills add https://github.com/millionco/expect --skill expect -y
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```bash
+    bunx skills add https://github.com/millionco/expect --skill expect -y
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    npx -y skills add https://github.com/millionco/expect --skill expect -y
+    ```
+  </Tab>
+</Tabs>
+
+## The skill in action
+
+Here is what a typical agent interaction looks like after the skill is installed:
+
+1. You ask the agent to add a checkout flow to your app
+2. The agent writes the code and commits it
+3. The skill triggers — the agent runs:
+   ```bash
+   EXPECT_BASE_URL=http://localhost:5173 expect-cli -m "Test the checkout flow end-to-end with valid data, then try to break it: empty cart submission, invalid card numbers, double-click place order, back button mid-payment. Verify error states and console errors." -y
+   ```
+4. Expect opens a real browser, executes the test plan, and returns pass/fail output with a replay URL
+5. If anything fails, the agent reads the failure output, fixes the issue, and re-runs
+
+## Skill content
+
+The skill is sourced from `packages/expect-skill/SKILL.md` in the Expect repository. Its core instructions:
+
+```markdown
+Adversarial browser testing for code changes. Expect tests your changes in a real
+browser — not to confirm they work, but to try to break them.
+
+Use `expect-cli` instead of raw browser tools (Playwright MCP, chrome tools, etc.)
+for verifying changes.
+```
+
+The skill tells the agent to always pass `-y` to skip interactive review, and to set `EXPECT_BASE_URL` or `--base-url` when the app is not on `localhost:3000`.
+
+<Note>
+  If `expect-cli` is not found, the skill instructs the agent to install it globally with `npm install -g expect-cli` before proceeding.
+</Note>
+
+## After failures
+
+The skill instructs the agent to read the failure output — it names the exact step and what broke. The agent then fixes the issue and re-runs `expect-cli` to verify the fix and check for new regressions.

@@ -1,80 +1,99 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get from zero to running your first browser test."
 ---
 
-## Get started in three steps
+<Note>
+  Expect requires **Claude Code**, **Codex CLI**, or **Cursor** to be installed and authenticated. Make sure your `ANTHROPIC_API_KEY` is set (for Claude) or the relevant agent is signed in before running tests.
+</Note>
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Install Expect">
+    The fastest way to install is with `npx`. This installs `expect-cli` globally and sets up the agent skill in one step:
 
-### Step 1: Set up your local environment
+    ```bash
+    npx -y expect-cli@latest init
+    ```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    Or install the package directly with your preferred package manager:
 
-### Step 2: Deploy your changes
+    <CodeGroup>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash npm
+    npm install -g expect-cli@latest
+    ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash pnpm
+    pnpm add -g expect-cli@latest
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash yarn
+    yarn global add expect-cli@latest
+    ```
 
-### Step 3: Go live
+    ```bash bun
+    bun add -g expect-cli@latest
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start your dev server">
+    Expect runs tests against your live application, so your dev server must be running before you invoke `expect-cli`.
+
+    ```bash
+    npm run dev
+    ```
+
+    By default, Expect connects to `http://localhost:3000`. If your app runs on a different host or port, set `EXPECT_BASE_URL`:
+
+    ```bash
+    export EXPECT_BASE_URL=http://localhost:5173
+    ```
+  </Step>
+
+  <Step title="Run Expect">
+    From your project directory, run:
+
+    ```bash
+    expect-cli
+    ```
+
+    This opens the interactive TUI where you can review the generated test plan, edit steps, and approve before execution.
+
+    To skip the review and run immediately (useful for agent-driven workflows), pass `-m` with an instruction and `-y`:
+
+    ```bash
+    expect-cli -m "test the login flow" -y
+    ```
+
+    <Tip>
+      Write adversarial instructions rather than confirmation checks. Instead of "check that the login form renders", use "submit the login form empty, with an invalid email, with a wrong password, and with valid credentials — verify error messages and redirect on success."
+    </Tip>
+  </Step>
+
+  <Step title="Review results">
+    After execution completes, Expect prints a pass/fail summary for each test step. For any failures, the output names the exact step and what broke.
+
+    Every run is also recorded with rrweb. The output includes a replay URL you can open in a browser to watch exactly what happened.
+
+    Expect exits `0` on success and `1` on failure, making it suitable for CI pipelines.
+  </Step>
+</Steps>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="How it works" icon="diagram-project" href="/how-it-works">
+    Understand the full scan → plan → execute → report pipeline.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/options">
+    Every flag and option documented with examples.
+  </Card>
+  <Card title="CI with GitHub Actions" icon="github" href="/guides/ci-github-actions">
+    Run Expect automatically on every pull request.
+  </Card>
+  <Card title="Writing instructions" icon="pen" href="/guides/writing-instructions">
+    Learn how to write instructions that find real bugs.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

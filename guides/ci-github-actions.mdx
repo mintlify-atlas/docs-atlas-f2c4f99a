@@ -1,0 +1,203 @@
+---
+title: "CI with GitHub Actions"
+description: Run Expect on every pull request automatically
+---
+
+Connect Expect to GitHub Actions so every pull request runs your browser tests in CI — headless, no cookies, with a 30-minute timeout.
+
+<Steps>
+  <Step title="Generate the workflow">
+    Run the following command in your project root:
+
+    ```bash
+    expect-cli add github-action
+    ```
+
+    This creates `.github/workflows/expect.yml`. The CLI will ask for your dev server command and URL (defaults: `npm run dev` and `http://localhost:3000`).
+
+    If you prefer to create the file manually, here is what the generated workflow looks like for an npm project:
+
+    ```yaml .github/workflows/expect.yml
+    name: Expect Tests
+
+    on:
+      pull_request:
+        branches: [main]
+
+    jobs:
+      expect:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXPECT_BASE_URL: "http://localhost:3000"
+        steps:
+          - uses: actions/checkout@v4
+
+          - uses: actions/setup-node@v4
+            with:
+              node-version: 22
+              cache: npm
+
+          - name: Install dependencies
+            run: npm ci
+
+          - name: Start dev server
+            run: npm run dev &
+
+          - name: Wait for dev server
+            run: npx wait-on http://localhost:3000 --timeout 60000
+
+          - name: Run expect
+            run: npx expect-cli@latest --ci
+    ```
+
+    The `--ci` flag enables headless mode, skips cookie extraction, sets auto-yes, and applies a 30-minute execution timeout.
+  </Step>
+
+  <Step title="Add your API key to repository secrets">
+    The workflow reads `ANTHROPIC_API_KEY` from GitHub Actions secrets.
+
+    1. Go to your repository on GitHub
+    2. Open **Settings → Secrets and variables → Actions**
+    3. Click **New repository secret**
+    4. Set the name to `ANTHROPIC_API_KEY` and paste your key
+
+    <Note>
+      The API key is never exposed in logs. GitHub Actions masks secret values automatically.
+    </Note>
+  </Step>
+
+  <Step title="Open a pull request">
+    Push a branch and open a pull request against `main`. The **Expect Tests** workflow triggers automatically and reports pass/fail as a check on the PR.
+
+    - Exit code `0` — all steps passed
+    - Exit code `1` — one or more steps failed
+  </Step>
+</Steps>
+
+## Generated YAML by package manager
+
+The `expect-cli add github-action` command detects your package manager and adjusts the setup steps and install command accordingly.
+
+<Tabs>
+  <Tab title="pnpm">
+    ```yaml
+    - uses: pnpm/action-setup@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Start dev server
+      run: pnpm dev &
+
+    - name: Wait for dev server
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run expect
+      run: pnpm dlx expect-cli@latest --ci
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```yaml
+    - uses: oven-sh/setup-bun@v2
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Start dev server
+      run: bun dev &
+
+    - name: Wait for dev server
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run expect
+      run: bunx expect-cli@latest --ci
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```yaml
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: yarn
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Start dev server
+      run: yarn dev &
+
+    - name: Wait for dev server
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run expect
+      run: npx expect-cli@latest --ci
+    ```
+  </Tab>
+  <Tab title="npm">
+    ```yaml
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Start dev server
+      run: npm run dev &
+
+    - name: Wait for dev server
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run expect
+      run: npx expect-cli@latest --ci
+    ```
+  </Tab>
+</Tabs>
+
+## Customizing the workflow
+
+**Different dev server URL**
+
+Update both `EXPECT_BASE_URL` and the `wait-on` URL to match your app:
+
+```yaml
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  EXPECT_BASE_URL: "http://localhost:5173"
+```
+
+```yaml
+- name: Wait for dev server
+  run: npx wait-on http://localhost:5173 --timeout 60000
+```
+
+**Different dev command**
+
+Replace the start step with whatever command starts your server:
+
+```yaml
+- name: Start dev server
+  run: npm run start:ci &
+```
+
+**Different branch triggers**
+
+Change the `branches` list under `pull_request` to target other branches:
+
+```yaml
+on:
+  pull_request:
+    branches: [main, staging, develop]
+```
+
+<Tip>
+  `EXPECT_BASE_URL` must match the URL your dev server binds to. If you see connection errors in CI, this is usually the cause.
+</Tip>

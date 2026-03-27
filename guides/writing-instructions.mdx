@@ -1,0 +1,97 @@
+---
+title: "Writing instructions"
+description: How to write adversarial test instructions that find real bugs
+---
+
+The `-m` / `--message` flag takes a natural language instruction describing what to test. What you write in that instruction determines whether Expect finds real bugs or just confirms that your UI renders.
+
+## Adversarial mindset
+
+Test like a user trying to break the feature, not a QA checklist confirming it renders.
+
+The goal is not to verify that the happy path works. It is to find the edge cases your code does not handle — empty inputs, invalid data, rapid submissions, back-button navigation, unexpected sequences of actions.
+
+## Bad vs good instructions
+
+**Bad** — confirms rendering, finds nothing:
+
+```bash
+expect-cli -m "Check that the login form renders" -y
+```
+
+**Good** — adversarial, exercises error states and edge cases:
+
+```bash
+expect-cli -m "Submit the login form empty, with invalid email, with a wrong password, and with valid credentials. Verify error messages for bad inputs and redirect on success. Check console errors after each." -y
+```
+
+The difference: the first instruction has nowhere to fail. The second gives the agent a sequence of actions that each have a correct outcome to verify.
+
+## Adversarial angles to consider
+
+When writing an instruction, think through these axes:
+
+- **Empty inputs** — submit forms with no data filled in
+- **Invalid data** — wrong email format, negative numbers, strings where numbers are expected
+- **Boundary values** — zero, maximum length, special characters, Unicode
+- **Double-click / rapid submit** — click the submit button twice in quick succession
+- **Regression in nearby features** — did the change break something adjacent to what you modified?
+- **Navigation edge cases** — back button mid-flow, direct URL access, page refresh mid-session
+
+## When to run
+
+Run Expect after any browser-facing change:
+
+- Components, pages, layouts
+- Forms and user input
+- Routes and navigation
+- API calls and data fetching
+- Styles that affect layout or visibility
+- Bug fixes and refactors
+
+When in doubt, run it.
+
+## Examples for common scenarios
+
+<AccordionGroup>
+  <Accordion title="Login flow">
+    ```bash
+    expect-cli -m "Submit the login form empty, with invalid email format, with a wrong password, and with valid credentials. Verify that each bad input shows the correct error message. Verify the redirect on success. Check console errors after each submission." -y
+    ```
+  </Accordion>
+
+  <Accordion title="Checkout flow">
+    ```bash
+    EXPECT_BASE_URL=http://localhost:5173 expect-cli -m "Test the checkout flow end-to-end with valid data, then try to break it: empty cart submission, invalid card numbers, double-click place order, back button mid-payment. Verify error states and console errors." -y
+    ```
+  </Accordion>
+
+  <Accordion title="Form submission">
+    ```bash
+    expect-cli -m "Fill and submit the contact form with valid data. Then try: submit empty, submit with each required field missing one at a time, submit with a 10,000-character message. Verify validation messages and that the success state appears only on valid submission." -y
+    ```
+  </Accordion>
+
+  <Accordion title="Navigation">
+    ```bash
+    expect-cli -m "Navigate through all top-level routes. Use the browser back button after each navigation. Refresh the page on each route. Access each route directly by URL. Verify no blank pages, no console errors, and correct page titles." -y
+    ```
+  </Accordion>
+
+  <Accordion title="Data display">
+    ```bash
+    expect-cli -m "Load the dashboard with data. Verify the numbers match what the API returns. Sort each sortable column both directions. Apply each filter and verify results change. Check the empty state by filtering to show no results." -y
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Tips
+
+- **Be specific about expected outcomes.** Instead of "check that it works", say "verify that a success toast appears and the form resets".
+- **Test error states, not just success.** Most bugs live in error handling, not the happy path.
+- **Mention console errors.** Instruct the agent to check the browser console after each action. Silent JavaScript errors are real bugs.
+- **Name the feature, not just the URL.** "Test the user profile settings page" gives more context than "go to `/settings`".
+
+<Tip>
+  If you are not sure what to test, describe the change you made and ask Expect to verify it works and try to break it. The agent will generate a test plan from that context.
+</Tip>

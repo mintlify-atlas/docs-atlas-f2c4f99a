@@ -1,0 +1,290 @@
+---
+title: "@expect/cookies"
+description: "Extract cookies from local browsers for use in automated testing"
+---
+
+`@expect/cookies` reads cookie stores from locally installed browsers — Chrome, Firefox, Safari, and 17 other Chromium-based browsers — so your automated tests run with real authentication state. No login flows, no fixture management.
+
+## Install
+
+<CodeGroup>
+
+```bash npm
+npm install @expect/cookies
+```
+
+```bash pnpm
+pnpm add @expect/cookies
+```
+
+```bash yarn
+yarn add @expect/cookies
+```
+
+```bash bun
+bun add @expect/cookies
+```
+
+</CodeGroup>
+
+---
+
+## Quick start
+
+```typescript
+import {
+  extractCookies,
+  matchCookieHeader,
+  toPlaywrightCookies,
+  toPuppeteerCookies,
+} from "@expect/cookies";
+
+const { cookies } = await extractCookies({ url: "https://github.com" });
+
+matchCookieHeader(cookies, "https://github.com"); // "session=abc; user=xyz"
+toPlaywrightCookies(cookies); // ready for Playwright's addCookies()
+toPuppeteerCookies(cookies); // ready for Puppeteer's setCookie()
+```
+
+Extract from a specific browser profile:
+
+```typescript
+import { detectBrowserProfiles, extractProfileCookies } from "@expect/cookies";
+
+const profiles = detectBrowserProfiles({ browser: "chrome" });
+const { cookies } = await extractProfileCookies({ profile: profiles[0] });
+```
+
+---
+
+## `extractCookies(options)`
+
+Reads cookies from browser SQLite databases on disk. Searches multiple browsers in parallel and deduplicates results. No browser needs to be running.
+
+```typescript
+const { cookies, warnings } = await extractCookies({
+  url: "https://github.com",
+  browsers: ["chrome", "firefox"],
+  names: ["session"],
+  includeExpired: false,
+  timeoutMs: 5000,
+  onKeychainAccess: async (browser) => {
+    console.log(`Requesting credential access for ${browser}...`);
+  },
+});
+```
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  The URL to match cookies against. Cookies are filtered by domain, path, secure flag, and expiry relative to this URL.
+</ParamField>
+
+<ParamField path="browsers" type="Browser[]" default='["chrome","brave","edge","arc","firefox","safari"]'>
+  The browsers to search. Defaults to the most common browsers. See the full list of supported values below.
+</ParamField>
+
+<ParamField path="names" type="string[]">
+  Filter results to cookies with these names only. When omitted, all cookie names are returned.
+</ParamField>
+
+<ParamField path="includeExpired" type="boolean" default="false">
+  When `true`, expired cookies are included in the results.
+</ParamField>
+
+<ParamField path="timeoutMs" type="number" default="5000">
+  Maximum time in milliseconds to wait for the keychain or DPAPI credential prompt to complete.
+</ParamField>
+
+<ParamField path="onKeychainAccess" type="(browser: string) => void">
+  Called immediately before the OS credential prompt appears for a browser. Use this to show a message to the user explaining why the prompt is appearing.
+</ParamField>
+
+### Returns
+
+<ResponseField name="cookies" type="Cookie[]">
+  The extracted cookies, deduplicated by `name|domain|path`. First occurrence wins when duplicates are found across browsers.
+</ResponseField>
+
+<ResponseField name="warnings" type="string[]">
+  Non-fatal issues encountered during extraction, such as a browser database not found or a decryption failure for a specific browser.
+</ResponseField>
+
+### Supported browsers
+
+`chrome` `edge` `brave` `arc` `dia` `helium` `chromium` `vivaldi` `opera` `ghost` `sidekick` `yandex` `iridium` `thorium` `sigmaos` `wavebox` `comet` `blisk` `firefox` `safari`
+
+<Note>
+  On macOS, Chromium-based browsers trigger a Keychain access prompt the first time you run `extractCookies`. Use `onKeychainAccess` to notify the user before the prompt appears.
+</Note>
+
+---
+
+## `detectBrowserProfiles(options?)`
+
+Detects all installed browser profiles across Chromium, Firefox, and Safari on the current machine.
+
+```typescript
+const allProfiles = detectBrowserProfiles();
+const chromeOnly = detectBrowserProfiles({ browser: "chrome" });
+```
+
+### Parameters
+
+<ParamField path="browser" type="Browser">
+  Filter results to a specific browser. When omitted, profiles for all installed browsers are returned.
+</ParamField>
+
+### Returns
+
+`BrowserProfile[]` — an array of detected browser profiles, each with profile name, path, display name, and browser info.
+
+---
+
+## `extractProfileCookies(options)`
+
+Extracts all cookies from a single browser profile. For Chromium browsers, it launches the browser headlessly via CDP so the browser handles its own decryption — no Keychain prompt. For Firefox and Safari, it reads directly from disk.
+
+```typescript
+const { cookies, warnings } = await extractProfileCookies({
+  profile: profiles[0],
+  port: 9222,
+});
+```
+
+### Parameters
+
+<ParamField path="profile" type="BrowserProfile" required>
+  A profile object from `detectBrowserProfiles`.
+</ParamField>
+
+<ParamField path="port" type="number" default="9222">
+  The CDP remote debugging port to use when launching Chromium headlessly. Only relevant for Chromium-based browsers.
+</ParamField>
+
+### Returns
+
+<ResponseField name="cookies" type="Cookie[]">
+  All cookies from the profile, normalized to the standard `Cookie` shape.
+</ResponseField>
+
+<ResponseField name="warnings" type="string[]">
+  Non-fatal issues encountered during extraction.
+</ResponseField>
+
+---
+
+## `extractAllProfileCookies(profiles)`
+
+Extracts cookies from multiple profiles sequentially and aggregates the results.
+
+```typescript
+const profiles = detectBrowserProfiles();
+const { cookies, warnings } = await extractAllProfileCookies(profiles);
+```
+
+### Parameters
+
+<ParamField path="profiles" type="BrowserProfile[]" required>
+  An array of profiles from `detectBrowserProfiles`.
+</ParamField>
+
+### Returns
+
+Aggregated `{ cookies: Cookie[], warnings: string[] }` from all profiles.
+
+---
+
+## Cookie helpers
+
+All helpers accept a plain `Cookie[]` as input.
+
+| Function | Returns | Description |
+| --- | --- | --- |
+| `matchCookies(cookies, url)` | `Cookie[]` | Filters cookies by domain, path, secure flag, and expiry relative to `url` |
+| `matchCookieHeader(cookies, url)` | `string` | Runs `matchCookies` then formats the result as a `"name=value; ..."` header string |
+| `toCookieHeader(cookies)` | `string` | Formats all cookies as a `Cookie` header string without any domain/path filtering |
+| `toPlaywrightCookies(cookies)` | `PlaywrightCookie[]` | Converts to Playwright's cookie shape (sets `sameSite` to `"Lax"` when missing) |
+| `toPuppeteerCookies(cookies)` | `PuppeteerCookie[]` | Converts to Puppeteer's cookie shape |
+
+---
+
+## `detectDefaultBrowser()`
+
+Returns the key of the system default browser, or `null` if detection fails.
+
+```typescript
+import { detectDefaultBrowser } from "@expect/cookies";
+
+const browser = await detectDefaultBrowser();
+// "chrome" | "safari" | "firefox" | ... | null
+```
+
+---
+
+## Types
+
+```typescript
+interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires?: number; // Unix timestamp in seconds
+  secure: boolean;
+  httpOnly: boolean;
+  sameSite?: "Strict" | "Lax" | "None";
+  browser: Browser; // which browser this cookie was extracted from
+}
+
+interface ExtractResult {
+  cookies: Cookie[];
+  warnings: string[];
+}
+
+interface BrowserProfile {
+  profileName: string;
+  profilePath: string;
+  displayName: string;
+  browser: BrowserInfo;
+}
+
+interface BrowserInfo {
+  name: string;
+  executablePath: string;
+}
+```
+
+---
+
+## SQLite vs Profile extraction
+
+Two strategies exist for reading cookies. Choose based on your requirements:
+
+| | SQLite (`extractCookies`) | Profile (`extractProfileCookies`) |
+| --- | --- | --- |
+| **Speed** | Fast — no browser launch | ~3 s startup (Chromium), fast otherwise |
+| **Keychain prompt (macOS)** | Yes | No |
+| **Firefox / Safari** | Yes | Yes |
+| **Requires browser installed** | No — reads database files directly | Yes |
+| **Cookie decryption** | Manual via Keychain / DPAPI | Handled by the browser itself |
+
+### How SQLite extraction works
+
+`extractCookies` reads cookie databases without launching any browser. For each requested browser in parallel it:
+
+1. Locates the database at the known platform-specific path (e.g. `~/Library/Application Support/Google/Chrome/Default/Network/Cookies` on macOS).
+2. Copies the database and its WAL/SHM sidecars to a temp directory so reads never conflict with a running browser.
+3. Decrypts cookie values for Chromium browsers — macOS uses Keychain + AES-128-CBC, Linux uses `secret-tool`, Windows uses DPAPI via PowerShell.
+4. Queries and parses the database (SQLite for Chrome/Firefox, binary format for Safari).
+5. Normalizes expiration, `sameSite`, and domain format, then deduplicates by `name|domain|path`.
+
+### How profile extraction works
+
+`extractProfileCookies` works with any detected `BrowserProfile`. For Chromium browsers it launches the browser headlessly via CDP:
+
+1. Copies the profile to a temp directory.
+2. Removes singleton locks so the headless instance can open the profile even when the browser is already running.
+3. Spawns the browser with `--remote-debugging-port` and `--headless=new`.
+4. Connects via WebSocket and calls `Network.getAllCookies`.
+5. Kills the browser and cleans up the temp directory.

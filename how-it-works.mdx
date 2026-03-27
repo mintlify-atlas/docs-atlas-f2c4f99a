@@ -1,0 +1,126 @@
+---
+title: "How it works"
+description: "The scan → plan → execute → report workflow that Expect runs on every invocation."
+---
+
+Every `expect-cli` run follows the same four-stage pipeline:
+
+```
+ ┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌─────────┐
+ │ Scan changes│────▶│ Generate plan│────▶│ Run in browser│────▶│ Report  │
+ │ (git diff)  │     │ (AI agent)   │     │ (Playwright)  │     │(pass/fail)│
+ └─────────────┘     └──────────────┘     └──────────────┘     └─────────┘
+```
+
+<Steps>
+  <Step title="Scan changes">
+    Expect reads your repository with `git diff` to determine exactly what changed. Which files were modified, which lines shifted, and which UI surfaces are affected.
+
+    There are three testing targets you can choose from:
+
+    | Target | What it scans |
+    |--------|---------------|
+    | `changes` (default) | Unstaged edits combined with your branch commits vs. the main branch |
+    | `unstaged` | Only the working tree — edits not yet staged or committed |
+    | `branch` | All commits on your current branch compared to the main branch |
+
+    Pass `--target` to select one explicitly:
+
+    ```bash
+    expect-cli --target branch
+    expect-cli --target unstaged
+    ```
+  </Step>
+
+  <Step title="Generate test plan">
+    The diff is sent to an AI agent — **Claude Code** or **Codex CLI** — which reads the changed code and writes an adversarial step-by-step test plan.
+
+    The plan is not a generic QA checklist. The agent targets the specific changes: if you modified a form, it will try empty inputs, invalid data, boundary values, and double-submission. If you changed a route, it will navigate there directly, via back-button, and via a stale URL.
+
+    **Agent providers:**
+
+    - **Claude Code** — Uses Anthropic's Claude model. Requires `ANTHROPIC_API_KEY` to be set or Claude Code to be authenticated.
+    - **Codex CLI** — Uses OpenAI's Codex. Requires Codex CLI to be installed and signed in.
+
+    Expect detects which agent is available automatically. Override with `--agent`:
+
+    ```bash
+    expect-cli --agent codex -m "test the signup flow" -y
+    ```
+  </Step>
+
+  <Step title="Review the plan">
+    Before anything runs in the browser, Expect shows you the generated test plan in an interactive TUI. You can:
+
+    - Read each step and verify it targets the right surfaces
+    - Edit or remove individual steps
+    - Adjust the instruction and regenerate
+    - Press `y` to approve and begin execution
+
+    **Skip review** with `-y` to run immediately without the interactive step:
+
+    ```bash
+    expect-cli -m "test the login flow" -y
+    ```
+
+    **CI mode** with `--ci` combines `-y` with headless execution, disabled cookie extraction, and a 30-minute timeout:
+
+    ```bash
+    expect-cli --ci -m "smoke test the homepage"
+    ```
+
+    <Note>
+      When `expect-cli` detects it is running inside a coding agent (Claude Code, Codex, or Cursor) or a headless environment, it automatically switches to headless mode without requiring `--ci` or `-y`.
+    </Note>
+  </Step>
+
+  <Step title="Execute in the browser">
+    Playwright opens a browser and executes each step in sequence against your running dev server.
+
+    **Cookie injection** — Before the session begins, Expect reads your local browser profiles (Chrome, Firefox, Safari) and injects the relevant cookies into Playwright. Your tests run with your real login sessions — no manual authentication setup required.
+
+    **Headed vs. headless** — By default the browser runs headlessly. Pass `--headed` to watch the browser window during a run:
+
+    ```bash
+    expect-cli --headed -m "smoke test" -y
+    ```
+
+    **Session recording** — Every run is recorded with [rrweb](https://github.com/rrweb-io/rrweb), which captures a full DOM snapshot and all mutations. The recording stays local; only the player assets are fetched from the replay host.
+  </Step>
+
+  <Step title="Report">
+    After all steps complete, Expect prints a structured pass/fail report:
+
+    - Each step is marked passed or failed
+    - Failures include the exact step description and what went wrong
+    - A replay URL is printed so you can open the session recording in a browser
+    - The process exits `0` on success and `1` on failure
+
+    In CI, the exit code is all you need — your pipeline fails automatically if any step fails.
+  </Step>
+</Steps>
+
+## Interactive vs. headless vs. CI mode
+
+| Mode | When it activates | Behavior |
+|------|-------------------|----------|
+| Interactive | No flags, running in a real terminal | Opens the TUI for plan review before execution |
+| Headless | `-y` flag, or `-m` with options | Skips plan review, runs immediately |
+| CI | `--ci` flag, or detected inside an agent/headless env | Headless + no cookies + 30-minute timeout |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="CLI options" icon="terminal" href="/cli/options">
+    Full reference for every flag and environment variable.
+  </Card>
+  <Card title="Session replay" icon="circle-play" href="/guides/session-replay">
+    Open and share rrweb recordings from your test runs.
+  </Card>
+  <Card title="Cookie auth" icon="cookie" href="/guides/cookie-auth">
+    How Expect extracts and injects browser cookies for authentication.
+  </Card>
+  <Card title="CI with GitHub Actions" icon="github" href="/guides/ci-github-actions">
+    Run Expect on every pull request automatically.
+  </Card>
+</CardGroup>

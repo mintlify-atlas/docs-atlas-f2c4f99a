@@ -1,0 +1,129 @@
+---
+title: "Configuration"
+description: "Environment variables and project preferences for expect-cli"
+---
+
+Expect is configured through environment variables. There are no config files to maintain.
+
+## Environment variables
+
+<ParamField path="EXPECT_BASE_URL" type="string" default="http://localhost:3000">
+  The base URL of your running application. Expect uses this to open your app in the browser during test runs.
+
+  Set this when your dev server runs on a port other than 3000.
+
+  ```bash
+  EXPECT_BASE_URL=http://localhost:5173 expect-cli -m "test the homepage" -y
+  ```
+
+  In GitHub Actions, set it as a workflow-level environment variable:
+
+  ```yaml .github/workflows/expect.yml
+  env:
+    EXPECT_BASE_URL: "http://localhost:5173"
+  ```
+</ParamField>
+
+<ParamField path="ANTHROPIC_API_KEY" type="string">
+  API key for the Claude agent. Required when using the `claude` agent provider (the default).
+
+  You can set it in your shell profile or pass it inline:
+
+  ```bash
+  # Set permanently
+  export ANTHROPIC_API_KEY=sk-ant-...
+
+  # Or pass inline
+  ANTHROPIC_API_KEY=sk-ant-... expect-cli -m "test" -y
+  ```
+
+  In CI, store it as a repository secret and reference it in your workflow:
+
+  ```yaml
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  ```
+
+  <Tip>If you use Claude Code locally, running `claude login` sets up the API key automatically.</Tip>
+</ParamField>
+
+<ParamField path="NO_TELEMETRY" type="string">
+  Set to `1` to disable all anonymous usage analytics.
+
+  ```bash
+  NO_TELEMETRY=1 expect-cli -m "test" -y
+  ```
+
+  Or export it permanently in your shell profile:
+
+  ```bash
+  export NO_TELEMETRY=1
+  ```
+</ParamField>
+
+---
+
+## Agent detection
+
+Expect automatically detects which coding agent is running in your environment by checking for well-known environment variables. The following agents are supported:
+
+| Agent | Detection variable |
+|-------|-------------------|
+| Claude Code | `CLAUDECODE` |
+| Cursor | `CURSOR_AGENT` |
+| Codex | `CODEX_CI` |
+| OpenCode | `OPENCODE` |
+| Amp | `AMP_HOME` |
+| AMI | `AMI` |
+| Any CI system | `CI` |
+
+When any of these variables are set, Expect automatically enables headless (CI) mode: no TUI, no confirmation prompts, no cookie extraction, and a 30-minute timeout. You can override this behaviour with explicit flags such as `--headed` or `--timeout`.
+
+---
+
+## Saved flows
+
+When you run a test, Expect saves the resulting flow to a `.expect` directory in your project root. Each flow is stored with a slug derived from the instruction text.
+
+```
+.expect/
+  flows/
+    test-the-login-flow.json
+    smoke-test-the-homepage.json
+  logs.md
+```
+
+You can replay a saved flow using the `-f` flag:
+
+```bash
+expect-cli -f test-the-login-flow -y
+```
+
+This reuses the saved test plan without re-generating it, which is faster and keeps results consistent across runs.
+
+<Note>
+Commit the `.expect/flows` directory to version control to share flows with your team. The `logs.md` file contains debug logs and is safe to gitignore.
+</Note>
+
+---
+
+## CI mode auto-detection
+
+Expect enters CI mode automatically under any of these conditions:
+
+- A known agent environment variable is set (see table above)
+- The `CI` environment variable is set (standard for GitHub Actions, CircleCI, etc.)
+- `stdin` is not a TTY (i.e. Expect is being piped or run non-interactively)
+- You pass `--ci` explicitly
+
+In CI mode, Expect:
+- Runs the browser headlessly
+- Skips cookie extraction
+- Skips confirmation prompts (auto-yes)
+- Applies a 30-minute execution timeout
+
+You can override individual CI mode behaviours with explicit flags. For example, to run headlessly but with a custom timeout:
+
+```bash
+expect-cli --ci --timeout 300000
+```

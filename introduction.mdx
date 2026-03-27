@@ -1,0 +1,58 @@
+---
+title: "Introduction"
+description: "Expect is a CLI tool that lets AI agents test your code changes in a real browser — one command from scan to pass/fail."
+---
+
+Expect reads your unstaged changes or branch diff, sends them to an AI agent (Claude Code or Codex CLI), and generates a step-by-step adversarial test plan. You review the plan in an interactive TUI, then the agent executes each step against a live Playwright browser with your real login sessions injected automatically. Every session is recorded so you can replay exactly what happened.
+
+## Who it's for
+
+Expect is built for developers who use terminal coding agents — **Claude Code**, **Codex CLI**, or **Cursor** — and want automated browser-based validation of their changes without writing or maintaining test scripts.
+
+## Key capabilities
+
+<CardGroup cols={2}>
+  <Card title="Scan changes" icon="code-branch" href="/how-it-works">
+    Reads unstaged edits or a full branch diff to build a precise picture of what changed before generating any tests.
+  </Card>
+  <Card title="AI test plans" icon="brain" href="/how-it-works">
+    Claude Code or Codex writes an adversarial step-by-step test plan targeted at your specific diff, not a generic checklist.
+  </Card>
+  <Card title="Real browser execution" icon="globe" href="/api/browser">
+    Playwright runs every step against your live dev server — the same browser engine your users see.
+  </Card>
+  <Card title="Cookie auth injection" icon="cookie" href="/guides/cookie-auth">
+    Your Chrome, Firefox, and Safari login sessions are read directly from local browser profiles. No manual auth setup.
+  </Card>
+  <Card title="Session recording" icon="circle-play" href="/guides/session-replay">
+    Every run is recorded with rrweb. Replay the full session to see exactly what the agent did and where it failed.
+  </Card>
+  <Card title="CI support" icon="github" href="/guides/ci-github-actions">
+    Pass `-y` to skip review and run headlessly. Exits `0` on success and `1` on failure — ready for GitHub Actions.
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+Before installing Expect, make sure you have:
+
+- **Node.js 18 or later** — required by `expect-cli`
+- **One of the following coding agents installed:**
+  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+  - [Codex CLI](https://github.com/openai/codex)
+  - [Cursor](https://cursor.com)
+
+<Note>
+  Expect detects which agent is available and uses it automatically. If none are found, `expect-cli init` will show you installation links.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install Expect and run your first browser test in under five minutes.
+  </Card>
+  <Card title="How it works" icon="diagram-project" href="/how-it-works">
+    Understand the full scan → plan → execute → report pipeline.
+  </Card>
+</CardGroup>

@@ -1,0 +1,96 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Expect",
+  "projectDescription": "A CLI tool that lets coding agents automatically test code changes in a real browser by scanning git diffs, generating AI-driven test plans, and executing them with Playwright.",
+  "theme": "luma",
+  "primaryColor": "#7c7c7c",
+  "lightColor": "#090909",
+  "darkColor": "#c7c7c7",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "how-it-works"
+            ]
+          },
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "cli/commands",
+              "cli/options",
+              "cli/configuration"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/ci-github-actions",
+              "guides/agent-skill",
+              "guides/writing-instructions",
+              "guides/session-replay",
+              "guides/cookie-auth"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Packages",
+            "pages": [
+              "api/browser",
+              "api/cookies",
+              "api/agent"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Scans unstaged git changes or branch diffs to understand what to test",
+    "AI-generated test plans using Claude Code or Codex CLI",
+    "Interactive TUI for reviewing and approving test plans before execution",
+    "Real browser execution via Playwright with session recording (rrweb)",
+    "Automatic cookie/auth injection from Chrome, Firefox, and Safari profiles",
+    "Headless CI mode with GitHub Actions integration",
+    "Adversarial testing approach — tries to break features, not just confirm they render",
+    "Agent skill integration for Claude Code, Codex, and Cursor"
+  ],
+  "publicApiSurface": [
+    "expect-cli (bin command)",
+    "expect-cli init",
+    "expect-cli add github-action",
+    "expect-cli add skill",
+    "expect-cli audit",
+    "-m / --message <instruction>",
+    "-f / --flow <slug>",
+    "-y / --yes",
+    "-a / --agent <claude|codex>",
+    "-t / --target <unstaged|branch|changes>",
+    "--headed",
+    "--no-cookies",
+    "--ci",
+    "--timeout <ms>",
+    "--verbose",
+    "createPage() — @expect/browser",
+    "snapshot() — @expect/browser",
+    "act() — @expect/browser",
+    "injectCookies() — @expect/browser",
+    "extractCookies() — @expect/cookies",
+    "detectBrowserProfiles() — @expect/cookies",
+    "extractProfileCookies() — @expect/cookies",
+    "matchCookieHeader() — @expect/cookies",
+    "toPlaywrightCookies() — @expect/cookies",
+    "toPuppeteerCookies() — @expect/cookies",
+    "createClaudeModel() — @expect/agent",
+    "createCodexModel() — @expect/agent"
+  ]
+}

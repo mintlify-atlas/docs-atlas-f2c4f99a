@@ -1,0 +1,60 @@
+---
+title: "Session replay"
+description: Watch exactly what the browser agent did during a test run
+---
+
+Every Expect test run is recorded using [rrweb](https://github.com/rrweb-io/rrweb). After the run completes, the output includes a replay URL you can open in any browser to watch a step-by-step playback of everything the agent did.
+
+## How it works
+
+rrweb captures the full DOM state and every interaction throughout the test session. When the run finishes, Expect serializes the recording and generates a replay URL.
+
+**Your replay data stays local.** The recording is stored on your machine. Only the player assets (JavaScript, CSS) are fetched from the replay host when you open the URL.
+
+## Finding the replay URL
+
+After a run completes, the replay URL appears in the output:
+
+```bash
+expect-cli -m "test the login flow" -y
+```
+
+```
+✓ Step 1: Navigate to login page
+✓ Step 2: Submit empty form — error message appears
+✓ Step 3: Submit invalid email — validation error appears
+✓ Step 4: Submit valid credentials — redirect to dashboard
+
+Replay: https://expect.dev/replay#...
+```
+
+Open the URL in your browser to watch the session.
+
+## What you can see
+
+The replay shows:
+
+- Step-by-step playback of browser actions
+- Screenshots captured at each step
+- The sequence of tool calls the agent made
+- Exact timing of each interaction
+
+This is useful for:
+
+- **Debugging failures** — see exactly where things went wrong and what the browser state looked like
+- **Sharing results with teammates** — send a replay URL to show what the agent tested
+- **Auditing agent behavior** — verify the agent took the actions you expected
+
+## Overriding the replay host
+
+The default replay host is `https://expect.dev`. To use a self-hosted player, pass the `--replay-host` flag:
+
+```bash
+expect-cli -m "test the dashboard" -y --replay-host https://replay.example.com
+```
+
+You can also set the replay host in CI via the workflow environment or command arguments. The replay data itself is always local — only the player assets are fetched from the host.
+
+<Note>
+  The replay URL contains the full recording encoded in the URL fragment (`#...`). It is never sent to any server. The host only serves the player application.
+</Note>
